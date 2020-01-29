@@ -10,48 +10,73 @@ namespace Restaurant.Core
 {
     public class Waiter
     {
-        private List<Article> _articles;
+
+        private Dictionary<string, Article> _articles;
         private List<Tasks> _tasks;
+        private Dictionary<string, Guest> _guests;
+        private event EventHandler<string> TaskReady;
 
-        private event EventHandler<DateTime> LogTasks;
-
-        internal List<Article> Articles { get => _articles; set => _articles = value; }
-        internal List<Tasks> Tasks { get => _tasks; set => _tasks = value; }
-        public Waiter()
+        public Waiter(EventHandler<string> OnReadyTask)
         {
-            Articles = new List<Article>();
-            Tasks = new List<Tasks>();
+            _articles = new Dictionary<string, Article>();
+            _tasks = new List<Tasks>();
+            _guests = new Dictionary<string, Guest>();
+            ReadAllArticles();
+            string[] tasks = ReadLinesFromCsvFile("Tasks,csv");
+            FastClock.Instance.OneMinuteIsOver += Instance_OneMinuteIsOver;
+            TaskReady += OnReadyTask;
         }
 
-        public void ReadAllArticlesAndTasks()
+
+
+        private void Instance_OneMinuteIsOver(object sender, DateTime e)
         {
-            string[] lines = ReadLinesFromCsvFile("Articles.csv");
-            for (int i = 0; i < lines.Length; i++)
-            {
-                string[] path = lines[i].Split(';');
-                Article article = new Article(path[0], Convert.ToDouble(path[1]), Convert.ToInt32(path[2]));
-                _articles.Add(article);
-            }
-
-            lines = ReadLinesFromCsvFile("Task.csv");
-            for (int i = 0; i < lines.Length; i++)
-            {
-                string[] path = lines[i].Split(';');
-                Tasks tasks = new Tasks(Convert.ToInt32(path[0]), path[1], path[2], path[3]);
-                _tasks.Add(tasks);
-            }
-
+            throw new NotImplementedException();
         }
 
-        private string[] ReadLinesFromCsvFile(string filename)
+        private void ReadAllArticles()
         {
-            string path = MyFile.GetFullNameInApplicationTree(filename);
+            string path = MyFile.GetFullNameInApplicationTree("Articles.csv");
             if (!File.Exists(path))
             {
-                return null;
+                throw new ArgumentNullException();
             }
-            string[] lines = File.ReadAllLines(path, Encoding.UTF8);
-            return lines;
+            string[] lines = File.ReadAllLines(path, UTF8Encoding.Default);
+
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string[] parts = lines[i].Split(';');
+                string articleName = parts[0];
+                Article article = new Article(articleName, Convert.ToDouble(parts[1]), Convert.ToInt32(parts[2]));
+                _articles.Add(articleName, article);
+            }
+            
+        }
+
+        private void ReadAllTasksAndGuests()
+        {
+            string path = MyFile.GetFullFolderNameInApplicationTree("Tasks.csv");
+            if (!File.Exists(path))
+            {
+                throw new ArgumentNullException();
+            }
+            string[] lines = File.ReadAllLines(path, UTF8Encoding.Default);
+
+            for (int i = 1; i < lines.Length; i++)
+            {
+                string[] parts = lines[i].Split(';');
+                string name = parts[1];
+                if (!_guests.ContainsKey(name))
+                {
+                    Guest guest = new Guest(name);
+                    _guests.Add(name,guest);
+                }
+
+                Tasks tasks = new Tasks(Convert.ToInt32(parts[0]), name, parts[2], parts[3]);
+
+
+            }
+
         }
     }
 

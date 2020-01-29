@@ -25,5 +25,9 @@ namespace Restaurant.Core
         {
             _name = name;
         }
+        public Guest()
+        {
+
+        }
     }
 }
