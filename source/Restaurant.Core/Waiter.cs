@@ -22,25 +22,53 @@ namespace Restaurant.Core
             _tasks = new List<Tasks>();
             _guests = new Dictionary<string, Guest>();
             ReadAllArticles();
-            string[] tasks = ReadLinesFromCsvFile("Tasks,csv");
+            ReadAllTasksAndGuests();
             FastClock.Instance.OneMinuteIsOver += Instance_OneMinuteIsOver;
             TaskReady += OnReadyTask;
         }
 
 
 
-        private void Instance_OneMinuteIsOver(object sender, DateTime e)
+        protected virtual void Instance_OneMinuteIsOver(object sender, DateTime e)
         {
-            throw new NotImplementedException();
+
+
+            while (_tasks.Count > 0 && FastClock.Instance.Time.Equals(_tasks[0].Delay))
+            {
+                Article article;
+                Guest guest;
+                string text = String.Empty;
+                if (_guests.TryGetValue(_tasks[0].Name, out guest))
+                {
+                    if (_tasks[0].TaskType == OrderType.Order)
+                    {
+                        text = $"{_tasks[0].Article} für {guest.Name} ist bestellt!";
+                    }
+                    else if (_tasks[0].TaskType == OrderType.Ready && _articles.TryGetValue(_tasks[0].Article, out article))
+                    {
+                        text = $"{_tasks[0].Article} für {guest.Name} wird serviert!";
+                        guest.AddArticle(article);
+                    }
+                    else if (_tasks[0].TaskType == OrderType.ToPay)
+                    {
+                        text = $"{guest.Name} bzeahlt {guest.Bill:f2} EUR";
+                    }
+
+                    OnReadyTask(text);
+                    _tasks.RemoveAt(0);
+                }
+            }
+        }
+
+        private void OnReadyTask(string text)
+        {
+            TaskReady?.Invoke(this, text);
         }
 
         private void ReadAllArticles()
         {
             string path = MyFile.GetFullNameInApplicationTree("Articles.csv");
-            if (!File.Exists(path))
-            {
-                throw new ArgumentNullException();
-            }
+
             string[] lines = File.ReadAllLines(path, UTF8Encoding.Default);
 
             for (int i = 1; i < lines.Length; i++)
@@ -50,34 +78,46 @@ namespace Restaurant.Core
                 Article article = new Article(articleName, Convert.ToDouble(parts[1]), Convert.ToInt32(parts[2]));
                 _articles.Add(articleName, article);
             }
-            
+
         }
 
         private void ReadAllTasksAndGuests()
         {
-            string path = MyFile.GetFullFolderNameInApplicationTree("Tasks.csv");
-            if (!File.Exists(path))
-            {
-                throw new ArgumentNullException();
-            }
+            string path = MyFile.GetFullNameInApplicationTree("Tasks.csv");
+            OrderType orderType;
+            Article article;
             string[] lines = File.ReadAllLines(path, UTF8Encoding.Default);
 
             for (int i = 1; i < lines.Length; i++)
             {
                 string[] parts = lines[i].Split(';');
-                string name = parts[1];
-                if (!_guests.ContainsKey(name))
+
+                if (Enum.TryParse(parts[2], out orderType))
                 {
-                    Guest guest = new Guest(name);
-                    _guests.Add(name,guest);
+
+                    string name = parts[1];
+                    if (!_guests.ContainsKey(name))
+                    {
+                        Guest guest = new Guest(name);
+                        _guests.Add(name, guest);
+                    }
+
+                    DateTime taskTime = FastClock.Instance.Time.AddMinutes(Convert.ToInt32(parts[0]));
+
+                    Tasks task = new Tasks(taskTime, name, orderType, parts[3]);
+                    _tasks.Add(task);
+
+                    if (orderType == OrderType.Order && _articles.TryGetValue(parts[3], out article))
+                    {
+                        taskTime = taskTime.AddMinutes(article.TimeToBuild);
+                        Tasks readyTask = new Tasks(taskTime, name, OrderType.Ready, article.Name);
+                        _tasks.Add(readyTask);
+                    }
                 }
-
-                Tasks tasks = new Tasks(Convert.ToInt32(parts[0]), name, parts[2], parts[3]);
-
-
             }
-
+            _tasks.Sort();
         }
+
     }
 
 }

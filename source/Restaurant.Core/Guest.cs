@@ -8,26 +8,35 @@ namespace Restaurant.Core
 {
     class Guest
     {
-        private string _name;
+        public string Name { get; private set; }
         private double _bill = 0.0;
+        private List<Article> _articles;
+
         public double Bill
         {
-            get { return _bill; }
+            get
 
+            {               
+                foreach (Article item in _articles)
+                {
+                    _bill += item.Price;
+                }
 
-            set
-            {
-                _bill += value;
+                return _bill; 
             }
+
         }
 
         public Guest(string name)
         {
-            _name = name;
+            Name = name;
+            _articles = new List<Article>();
         }
-        public Guest()
-        {
 
+        public void AddArticle(Article article)
+        {
+            _articles.Add(article);
         }
+       
     }
 }

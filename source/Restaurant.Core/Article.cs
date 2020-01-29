@@ -8,15 +8,15 @@ namespace Restaurant.Core
 {
     public class Article
     {
-        private readonly string _name;
-        private readonly double _price;
-        private readonly int _timeToBuild;
+        public string Name { get; private set; }
+        public double Price { get; private set; }
+        public int TimeToBuild { get; private set; }
 
         public Article(string name, double price, int timeToBuild)
         {
-            _name = name;
-            _price = price;
-            _timeToBuild = timeToBuild;
+            Name = name;
+            Price = price;
+            TimeToBuild = timeToBuild;
         }
 
     }
